@@ -40,7 +40,7 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.umami.analytics.widget.ACTION_REFRESH_WIDGET" />
+                <action android:name="com.blackpiratex.umami.widget.ACTION_REFRESH_WIDGET" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

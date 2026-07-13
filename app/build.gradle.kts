@@ -7,15 +7,15 @@ plugins {
 }
 
 android {
-    namespace = "com.umami.analytics"
+    namespace = "com.blackpiratex.umami"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.umami.analytics"
+        applicationId = "com.blackpiratex.umami"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -25,7 +25,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -54,6 +55,10 @@ android {
 }
 
 dependencies {
+    // Core & Splashscreen
+    implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
     // Compose BOM
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
@@ -76,39 +81,39 @@ dependencies {
     // Lifecycle & ViewModel
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
 
-    // Core & Splash Screen
-    implementation("androidx.core:core-ktx:1.15.0")
-    implementation("androidx.core:core-splashscreen:1.0.1")
-
-    // WorkManager for background periodic widget updates
-    implementation("androidx.work:work-runtime-ktx:2.9.1")
-
-    // MPAndroidChart Library
-    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
-
-    // Room Database for Offline Caching
+    // Room Database
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
 
-    // Ktor Networking
-    val ktorVersion = "2.3.12"
+    // Ktor HTTP Client
+    val ktorVersion = "3.0.2"
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
     implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
     implementation("io.ktor:ktor-client-logging:$ktorVersion")
 
-    // Kotlinx Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    // KotlinX Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
-    // Coil Image Loading
+    // WorkManager for background sync & widget updates
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
+
+    // Coil for dynamic favicon image loading
     implementation("io.coil-kt:coil-compose:2.7.0")
 
-    // Tooling & Debugging
+    // MPAndroidChart for Analytics Charts
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
+    // Testing
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    androidTestImplementation(composeBom)
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
