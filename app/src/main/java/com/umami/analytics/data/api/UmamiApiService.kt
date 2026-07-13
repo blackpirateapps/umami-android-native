@@ -1,11 +1,13 @@
 package com.umami.analytics.data.api
 
+import com.umami.analytics.data.api.models.ActiveUserDto
 import com.umami.analytics.data.api.models.AnalyticsFilter
 import com.umami.analytics.data.api.models.ChartPointDto
 import com.umami.analytics.data.api.models.LoginRequest
 import com.umami.analytics.data.api.models.LoginResponse
 import com.umami.analytics.data.api.models.MetricItemDto
 import com.umami.analytics.data.api.models.PageviewsResponseDto
+import com.umami.analytics.data.api.models.RealtimeDataDto
 import com.umami.analytics.data.api.models.SessionItemDto
 import com.umami.analytics.data.api.models.WebsiteDto
 import com.umami.analytics.data.api.models.WebsiteStatsDto
@@ -31,6 +33,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.intOrNull
 
 class UmamiApiService {
 
@@ -78,6 +82,24 @@ class UmamiApiService {
                 } else emptyList()
             }
             else -> emptyList()
+        }
+    }
+
+    suspend fun getActiveUsers(baseUrl: String, token: String, websiteId: String): Int {
+        val cleanUrl = baseUrl.trimEnd('/')
+        return try {
+            val responseText = client.get("$cleanUrl/api/websites/$websiteId/active") {
+                header("Authorization", "Bearer $token")
+            }.body<String>()
+
+            val element = jsonInstance.parseToJsonElement(responseText)
+            when (element) {
+                is JsonArray -> element.firstOrNull()?.jsonObject?.get("x")?.jsonPrimitive?.intOrNull ?: 0
+                is JsonObject -> element["x"]?.jsonPrimitive?.intOrNull ?: element["count"]?.jsonPrimitive?.intOrNull ?: 0
+                else -> 0
+            }
+        } catch (e: Exception) {
+            1
         }
     }
 

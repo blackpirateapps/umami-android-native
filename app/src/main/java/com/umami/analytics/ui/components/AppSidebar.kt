@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Settings
@@ -51,6 +52,7 @@ fun AppSidebar(
     currentRoute: String,
     onWebsiteSelected: (WebsiteDto) -> Unit,
     onNavigateToOverview: () -> Unit,
+    onNavigateToRealtime: () -> Unit,
     onNavigateToSessions: () -> Unit,
     onNavigateToWebsites: () -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -167,6 +169,21 @@ fun AppSidebar(
                 selected = currentRoute == "overview",
                 onClick = onNavigateToOverview,
                 icon = { Icon(Icons.Default.BarChart, contentDescription = "Overview") },
+                colors = NavigationDrawerItemDefaults.colors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                    selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            NavigationDrawerItem(
+                label = { Text("Realtime", fontWeight = FontWeight.SemiBold) },
+                selected = currentRoute == "realtime",
+                onClick = onNavigateToRealtime,
+                icon = { Icon(Icons.Default.FlashOn, contentDescription = "Realtime") },
                 colors = NavigationDrawerItemDefaults.colors(
                     selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                     selectedIconColor = MaterialTheme.colorScheme.primary,

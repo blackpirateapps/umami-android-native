@@ -7,12 +7,15 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.jsonPrimitive
 
 @Serializable
 data class LoginRequest(
@@ -82,7 +85,8 @@ data class WebsiteStatsDto(
     val visitors: StatValue = StatValue(),
     val visits: StatValue = StatValue(),
     val bounces: StatValue = StatValue(),
-    val totaltime: StatValue = StatValue()
+    val totaltime: StatValue = StatValue(),
+    val events: StatValue = StatValue()
 )
 
 @Serializable
@@ -97,7 +101,39 @@ data class PageviewsResponseDto(
     val sessions: List<ChartPointDto> = emptyList()
 )
 
-@Serializable
+object MetricItemSerializer : KSerializer<MetricItemDto> {
+    override val descriptor: SerialDescriptor = buildClassSerialDescriptor("MetricItemDto")
+
+    override fun deserialize(decoder: Decoder): MetricItemDto {
+        val input = decoder as? JsonDecoder ?: return MetricItemDto()
+        val element = input.decodeJsonElement()
+        if (element is JsonObject) {
+            val labelStr = element["x"]?.jsonPrimitive?.contentOrNull
+                ?: element["url"]?.jsonPrimitive?.contentOrNull
+                ?: element["name"]?.jsonPrimitive?.contentOrNull
+                ?: element["page"]?.jsonPrimitive?.contentOrNull
+                ?: element["domain"]?.jsonPrimitive?.contentOrNull
+                ?: element["element"]?.jsonPrimitive?.contentOrNull
+                ?: ""
+            val valNum = element["y"]?.jsonPrimitive?.longOrNull
+                ?: element["views"]?.jsonPrimitive?.longOrNull
+                ?: element["count"]?.jsonPrimitive?.longOrNull
+                ?: element["pageviews"]?.jsonPrimitive?.longOrNull
+                ?: 0L
+            return MetricItemDto(x = labelStr, y = valNum)
+        }
+        return MetricItemDto()
+    }
+
+    override fun serialize(encoder: Encoder, value: MetricItemDto) {
+        val composite = encoder.beginStructure(descriptor)
+        composite.encodeStringElement(descriptor, 0, value.x ?: "")
+        composite.encodeLongElement(descriptor, 1, value.y)
+        composite.endStructure(descriptor)
+    }
+}
+
+@Serializable(with = MetricItemSerializer::class)
 data class MetricItemDto(
     val x: String? = "",
     val y: Long = 0
@@ -124,12 +160,31 @@ data class SessionItemDto(
 )
 
 @Serializable
-data class SessionResponseDto(
-    val data: List<SessionItemDto> = emptyList(),
-    val count: Int = 0,
-    val page: Int = 1,
-    val pageSize: Int = 20
+data class ActiveUserDto(
+    val x: Int = 0
 )
+
+@Serializable
+data class RealtimeDataDto(
+    val pageviews: List<SessionItemDto> = emptyList(),
+    val sessions: List<SessionItemDto> = emptyList(),
+    val events: List<SessionItemDto> = emptyList(),
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+data class RealtimeActivityItem(
+    val id: String,
+    val avatarSeed: String,
+    val timeFormatted: String,
+    val type: ActivityType,
+    val detailText: String
+)
+
+enum class ActivityType {
+    VIEW,
+    VISITOR,
+    EVENT
+}
 
 enum class TimeRange(
     val label: String,

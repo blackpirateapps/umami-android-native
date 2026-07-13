@@ -14,8 +14,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -30,6 +30,8 @@ import com.umami.analytics.ui.screens.login.LoginScreen
 import com.umami.analytics.ui.screens.login.LoginViewModel
 import com.umami.analytics.ui.screens.overview.OverviewScreen
 import com.umami.analytics.ui.screens.overview.OverviewViewModel
+import com.umami.analytics.ui.screens.realtime.RealtimeScreen
+import com.umami.analytics.ui.screens.realtime.RealtimeViewModel
 import com.umami.analytics.ui.screens.sessions.SessionsScreen
 import com.umami.analytics.ui.screens.sessions.SessionsViewModel
 import com.umami.analytics.ui.screens.settings.SettingsScreen
@@ -41,6 +43,7 @@ import kotlinx.coroutines.launch
 sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Overview : Screen("overview")
+    object Realtime : Screen("realtime")
     object Sessions : Screen("sessions")
     object Websites : Screen("websites")
     object Settings : Screen("settings")
@@ -70,6 +73,9 @@ fun AppNavigation(
     val overviewViewModel = remember {
         OverviewViewModel(repository, sessionManager, networkObserver)
     }
+    val realtimeViewModel = remember {
+        RealtimeViewModel(apiService, repository, sessionManager, networkObserver)
+    }
     val sessionsViewModel = remember {
         SessionsViewModel(repository, sessionManager, networkObserver)
     }
@@ -91,12 +97,23 @@ fun AppNavigation(
                 onWebsiteSelected = { site ->
                     scope.launch { drawerState.close() }
                     overviewViewModel.selectWebsite(site)
+                    realtimeViewModel.loadWebsites()
                     sessionsViewModel.loadWebsitesAndSessions()
                 },
                 onNavigateToOverview = {
                     scope.launch { drawerState.close() }
                     if (currentRoute != Screen.Overview.route) {
                         navController.navigate(Screen.Overview.route) {
+                            popUpTo(Screen.Overview.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                },
+                onNavigateToRealtime = {
+                    scope.launch { drawerState.close() }
+                    if (currentRoute != Screen.Realtime.route) {
+                        navController.navigate(Screen.Realtime.route) {
                             popUpTo(Screen.Overview.route) { saveState = true }
                             launchSingleTop = true
                             restoreState = true
@@ -177,6 +194,7 @@ fun AppNavigation(
                     viewModel = loginViewModel,
                     onLoginSuccess = {
                         overviewViewModel.loadWebsites()
+                        realtimeViewModel.loadWebsites()
                         sessionsViewModel.loadWebsitesAndSessions()
                         navController.navigate(Screen.Overview.route) {
                             popUpTo(Screen.Login.route) { inclusive = true }
@@ -188,6 +206,13 @@ fun AppNavigation(
             composable(Screen.Overview.route) {
                 OverviewScreen(
                     viewModel = overviewViewModel,
+                    onOpenDrawer = { scope.launch { drawerState.open() } }
+                )
+            }
+
+            composable(Screen.Realtime.route) {
+                RealtimeScreen(
+                    viewModel = realtimeViewModel,
                     onOpenDrawer = { scope.launch { drawerState.open() } }
                 )
             }
