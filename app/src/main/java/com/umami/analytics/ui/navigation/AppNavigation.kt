@@ -39,7 +39,8 @@ fun AppNavigation(
     apiService: UmamiApiService,
     database: UmamiDatabase,
     sessionManager: SessionManager,
-    networkObserver: NetworkObserver
+    networkObserver: NetworkObserver,
+    onThemeModeChange: (String) -> Unit
 ) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -141,6 +142,7 @@ fun AppNavigation(
                 SettingsScreen(
                     sessionManager = sessionManager,
                     onOpenDrawer = { scope.launch { drawerState.open() } },
+                    onThemeModeChange = onThemeModeChange,
                     onClearCache = {
                         scope.launch {
                             database.clearAllTables()

@@ -1,7 +1,18 @@
 package com.umami.analytics.data.api.models
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.longOrNull
 
 @Serializable
 data class LoginRequest(
@@ -32,7 +43,34 @@ data class WebsiteDto(
     val createdAt: String? = null
 )
 
-@Serializable
+object StatValueSerializer : KSerializer<StatValue> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("StatValue", PrimitiveKind.LONG)
+
+    override fun deserialize(decoder: Decoder): StatValue {
+        val input = decoder as? JsonDecoder ?: return StatValue()
+        val element = input.decodeJsonElement()
+        return when (element) {
+            is JsonPrimitive -> {
+                val num = element.longOrNull ?: 0L
+                StatValue(value = num, change = 0L)
+            }
+            is JsonObject -> {
+                val valObj = element["value"]
+                val valNum = if (valObj is JsonPrimitive) valObj.longOrNull ?: 0L else 0L
+                val changeObj = element["change"]
+                val changeNum = if (changeObj is JsonPrimitive) changeObj.longOrNull ?: 0L else 0L
+                StatValue(value = valNum, change = changeNum)
+            }
+            else -> StatValue()
+        }
+    }
+
+    override fun serialize(encoder: Encoder, value: StatValue) {
+        encoder.encodeLong(value.value)
+    }
+}
+
+@Serializable(with = StatValueSerializer::class)
 data class StatValue(
     val value: Long = 0,
     val change: Long = 0
@@ -115,7 +153,7 @@ data class AnalyticsFilter(
     val referrer: String? = null
 ) {
     fun isEmpty() = page.isNullOrBlank() && country.isNullOrBlank() && region.isNullOrBlank() && referrer.isNullOrBlank()
-    
+
     fun toCacheKey(): String {
         return "p=${page ?: ""}_c=${country ?: ""}_r=${region ?: ""}_ref=${referrer ?: ""}"
     }

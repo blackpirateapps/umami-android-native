@@ -14,8 +14,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.ArrowBackIosNew
-import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
@@ -49,6 +49,7 @@ import com.umami.analytics.ui.components.AnalyticsChart
 import com.umami.analytics.ui.components.FilterChipGroup
 import com.umami.analytics.ui.components.FilterDialog
 import com.umami.analytics.ui.components.MetricCard
+import com.umami.analytics.ui.components.MetricType
 import com.umami.analytics.ui.components.OfflineNoticeBar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -163,7 +164,7 @@ fun OverviewScreen(
                         onClick = { viewModel.navigateTimeOffset(-1) },
                         enabled = uiState.dateOffsetIndex > 0
                     ) {
-                        Icon(Icons.Default.ArrowForwardIos, contentDescription = "Next period")
+                        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = "Next period")
                     }
                 }
             }
@@ -180,7 +181,7 @@ fun OverviewScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Stat Cards Row
+            // Stat Cards Row (Views, Visitors, Visits)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -215,45 +216,53 @@ fun OverviewScreen(
             // Pages and Visitors
             MetricCard(
                 title = "Pages",
-                items = uiState.topPages
+                items = uiState.topPages,
+                type = MetricType.PAGE
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Sources (Referrers)
+            // Sources (Referrers with Favicons)
             MetricCard(
                 title = "Sources",
-                items = uiState.sources
+                items = uiState.sources,
+                type = MetricType.SOURCE
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Environment: Browsers, OS, Devices, Countries
+            // Environment: Browsers (with Icons)
             MetricCard(
                 title = "Browsers",
-                items = uiState.browsers
+                items = uiState.browsers,
+                type = MetricType.BROWSER
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Operating Systems (with Icons)
             MetricCard(
                 title = "Operating Systems",
-                items = uiState.osList
+                items = uiState.osList,
+                type = MetricType.OS
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Devices
             MetricCard(
                 title = "Devices",
-                items = uiState.devices
+                items = uiState.devices,
+                type = MetricType.DEVICE
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Countries (with Flag Emojis)
             MetricCard(
                 title = "Countries",
                 items = uiState.countries,
-                isCountryCard = true
+                type = MetricType.COUNTRY
             )
 
             Spacer(modifier = Modifier.height(24.dp))

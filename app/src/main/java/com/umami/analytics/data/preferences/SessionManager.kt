@@ -13,6 +13,7 @@ class SessionManager(context: Context) {
         private const val KEY_TOKEN = "auth_token"
         private const val KEY_USERNAME = "username"
         private const val KEY_SELECTED_WEBSITE_ID = "selected_website_id"
+        private const val KEY_THEME_MODE = "theme_mode" // "system", "dark", "light"
     }
 
     fun saveSession(serverUrl: String, token: String, username: String) {
@@ -28,6 +29,10 @@ class SessionManager(context: Context) {
         prefs.edit().putString(KEY_SELECTED_WEBSITE_ID, websiteId).apply()
     }
 
+    fun saveThemeMode(mode: String) {
+        prefs.edit().putString(KEY_THEME_MODE, mode).apply()
+    }
+
     fun getServerUrl(): String? = prefs.getString(KEY_SERVER_URL, null)
 
     fun getToken(): String? = prefs.getString(KEY_TOKEN, null)
@@ -35,6 +40,8 @@ class SessionManager(context: Context) {
     fun getUsername(): String? = prefs.getString(KEY_USERNAME, null)
 
     fun getSelectedWebsiteId(): String? = prefs.getString(KEY_SELECTED_WEBSITE_ID, null)
+
+    fun getThemeMode(): String = prefs.getString(KEY_THEME_MODE, "system") ?: "system"
 
     fun isLoggedIn(): Boolean {
         return !getServerUrl().isNullOrBlank() && !getToken().isNullOrBlank()
