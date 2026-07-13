@@ -82,6 +82,9 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
 
+    // WorkManager for background periodic widget updates
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+
     // Room Database for Offline Caching
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")

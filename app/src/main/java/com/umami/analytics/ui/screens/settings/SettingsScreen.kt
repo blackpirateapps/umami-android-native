@@ -20,17 +20,21 @@ import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SettingsSuggest
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -41,10 +45,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.umami.analytics.data.preferences.SessionManager
+import com.umami.analytics.widget.WidgetPreferences
+import com.umami.analytics.widget.WidgetSyncScheduler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,9 +61,23 @@ fun SettingsScreen(
     onThemeModeChange: (String) -> Unit,
     onClearCache: () -> Unit
 ) {
+    val context = LocalContext.current
+    val widgetPrefs = remember { WidgetPreferences(context) }
+
     val serverUrl = sessionManager.getServerUrl() ?: "Not logged in"
     val username = sessionManager.getUsername() ?: "Guest"
     var currentTheme by remember { mutableStateOf(sessionManager.getThemeMode()) }
+    var currentWidgetInterval by remember { mutableStateOf(widgetPrefs.getUpdateIntervalHours()) }
+    var intervalDropdownExpanded by remember { mutableStateOf(false) }
+
+    val intervalOptions = listOf(
+        1 to "1 Hour",
+        2 to "2 Hours (Default)",
+        4 to "4 Hours",
+        8 to "8 Hours",
+        12 to "12 Hours",
+        24 to "24 Hours"
+    )
 
     Scaffold(
         topBar = {
@@ -145,6 +166,67 @@ fun SettingsScreen(
                             leadingIcon = { Icon(Icons.Default.Brightness4, contentDescription = null) },
                             modifier = Modifier.weight(1f)
                         )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Widget Update Frequency Section
+            Text(
+                text = "Widget Settings",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Schedule, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text("Update Frequency", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Text("Background sync rate for home screen widgets", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    OutlinedButton(
+                        onClick = { intervalDropdownExpanded = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(
+                            text = intervalOptions.find { it.first == currentWidgetInterval }?.second ?: "$currentWidgetInterval Hours",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = intervalDropdownExpanded,
+                        onDismissRequest = { intervalDropdownExpanded = false }
+                    ) {
+                        intervalOptions.forEach { (hours, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    intervalDropdownExpanded = false
+                                    currentWidgetInterval = hours
+                                    widgetPrefs.saveUpdateIntervalHours(hours)
+                                    WidgetSyncScheduler.schedulePeriodicWork(context, hours)
+                                }
+                            )
+                        }
                     }
                 }
             }

@@ -13,7 +13,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.UmamiAnalytics"
         android:enableOnBackInvokedCallback="true">
-        
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -23,6 +23,29 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Widget Configuration Activity -->
+        <activity
+            android:name=".widget.WidgetConfigActivity"
+            android:exported="true"
+            android:theme="@style/Theme.UmamiAnalytics">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <!-- Home Screen AppWidget Receiver -->
+        <receiver
+            android:name=".widget.UmamiStatsWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.umami.analytics.widget.ACTION_REFRESH_WIDGET" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/umami_stats_widget_info" />
+        </receiver>
     </application>
 
 </manifest>
