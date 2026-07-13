@@ -15,7 +15,6 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
@@ -94,12 +93,37 @@ class UmamiApiService {
 
             val element = jsonInstance.parseToJsonElement(responseText)
             when (element) {
-                is JsonArray -> element.firstOrNull()?.jsonObject?.get("x")?.jsonPrimitive?.intOrNull ?: 0
-                is JsonObject -> element["x"]?.jsonPrimitive?.intOrNull ?: element["count"]?.jsonPrimitive?.intOrNull ?: 0
-                else -> 0
+                is JsonArray -> element.firstOrNull()?.jsonObject?.get("x")?.jsonPrimitive?.intOrNull ?: 1
+                is JsonObject -> element["x"]?.jsonPrimitive?.intOrNull ?: element["count"]?.jsonPrimitive?.intOrNull ?: 1
+                else -> 1
             }
         } catch (e: Exception) {
             1
+        }
+    }
+
+    suspend fun getRealtime(baseUrl: String, token: String, websiteId: String, startAt: Long): RealtimeDataDto? {
+        val cleanUrl = baseUrl.trimEnd('/')
+        return try {
+            // Try /api/realtime/{websiteId} or /api/websites/{websiteId}/realtime
+            val url1 = "$cleanUrl/api/realtime/$websiteId"
+            val responseText = try {
+                client.get(url1) {
+                    header("Authorization", "Bearer $token")
+                    parameter("startAt", startAt)
+                }.body<String>()
+            } catch (e: Exception) {
+                val url2 = "$cleanUrl/api/websites/$websiteId/realtime"
+                client.get(url2) {
+                    header("Authorization", "Bearer $token")
+                    parameter("startAt", startAt)
+                }.body<String>()
+            }
+
+            jsonInstance.decodeFromString<RealtimeDataDto>(responseText)
+        } catch (e: Exception) {
+            println("Realtime endpoint error: ${e.message}")
+            null
         }
     }
 

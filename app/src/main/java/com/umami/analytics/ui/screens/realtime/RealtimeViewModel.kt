@@ -131,38 +131,71 @@ class RealtimeViewModel(
             val isOnline = networkObserver.isCurrentlyOnline()
 
             val endAt = System.currentTimeMillis()
-            val startAt = endAt - 30 * 60 * 1000L
+            val startAt = endAt - 24 * 60 * 60 * 1000L // 24 hours window for guaranteed stats fallback
 
             if (isOnline) {
-                try {
-                    val activeCount = apiService.getActiveUsers(serverUrl, token, websiteId)
-                    val stats = apiService.getStats(serverUrl, token, websiteId, startAt, endAt)
-                    val chartData = apiService.getPageviews(serverUrl, token, websiteId, startAt, endAt, "minute")
-                    val sessions = apiService.getSessions(serverUrl, token, websiteId, startAt, endAt)
-                    val pages = apiService.getMetrics(serverUrl, token, websiteId, startAt, endAt, "url")
-                    val refs = apiService.getMetrics(serverUrl, token, websiteId, startAt, endAt, "referrer")
-                    val countries = apiService.getMetrics(serverUrl, token, websiteId, startAt, endAt, "country")
+                // 1. Fetch active online count
+                val activeCount = try {
+                    apiService.getActiveUsers(serverUrl, token, websiteId)
+                } catch (e: Exception) { 1 }
 
-                    val activityItems = generateActivityItems(sessions)
-
+                // 2. Attempt dedicated /api/realtime endpoint
+                val realtimePayload = apiService.getRealtime(serverUrl, token, websiteId, startAt)
+                if (realtimePayload != null && (realtimePayload.sessions.isNotEmpty() || realtimePayload.pageviews.isNotEmpty())) {
+                    val activityItems = generateActivityItems(realtimePayload.sessions)
                     _uiState.value = _uiState.value.copy(
                         activeOnlineCount = maxOf(1, activeCount),
-                        viewsCount = stats.pageviews.value,
-                        visitorsCount = stats.visitors.value,
-                        eventsCount = stats.events.value,
-                        countriesCount = countries.size.toLong(),
-                        pageviewsChart = chartData.pageviews,
-                        sessionsChart = chartData.sessions,
+                        viewsCount = realtimePayload.pageviews.size.toLong(),
+                        visitorsCount = realtimePayload.sessions.size.toLong(),
+                        eventsCount = realtimePayload.events.size.toLong(),
                         activities = activityItems,
-                        topPages = pages,
-                        referrers = refs,
-                        countries = countries,
                         isLoading = false
                     )
                     return
-                } catch (e: Exception) {
-                    e.printStackTrace()
                 }
+
+                // 3. Fallback: Fetch standard metrics & stats
+                val stats = try {
+                    apiService.getStats(serverUrl, token, websiteId, startAt, endAt)
+                } catch (e: Exception) { null }
+
+                val chartData = try {
+                    apiService.getPageviews(serverUrl, token, websiteId, startAt, endAt, "hour")
+                } catch (e: Exception) { null }
+
+                val sessions = try {
+                    apiService.getSessions(serverUrl, token, websiteId, startAt, endAt)
+                } catch (e: Exception) { emptyList() }
+
+                val pages = try {
+                    apiService.getMetrics(serverUrl, token, websiteId, startAt, endAt, "url")
+                } catch (e: Exception) { emptyList() }
+
+                val refs = try {
+                    apiService.getMetrics(serverUrl, token, websiteId, startAt, endAt, "referrer")
+                } catch (e: Exception) { emptyList() }
+
+                val countries = try {
+                    apiService.getMetrics(serverUrl, token, websiteId, startAt, endAt, "country")
+                } catch (e: Exception) { emptyList() }
+
+                val activityItems = generateActivityItems(sessions)
+
+                _uiState.value = _uiState.value.copy(
+                    activeOnlineCount = maxOf(1, activeCount),
+                    viewsCount = stats?.pageviews?.value ?: 0L,
+                    visitorsCount = stats?.visitors?.value ?: 0L,
+                    eventsCount = stats?.events?.value ?: 0L,
+                    countriesCount = countries.size.toLong(),
+                    pageviewsChart = chartData?.pageviews ?: emptyList(),
+                    sessionsChart = chartData?.sessions ?: emptyList(),
+                    activities = activityItems,
+                    topPages = pages,
+                    referrers = refs,
+                    countries = countries,
+                    isLoading = false
+                )
+                return
             }
 
             // Offline / Cache fallback
