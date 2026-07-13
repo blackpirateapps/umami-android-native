@@ -1,5 +1,10 @@
 package com.umami.analytics.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
@@ -109,7 +114,19 @@ fun AppNavigation(
     ) {
         NavHost(
             navController = navController,
-            startDestination = startDestination
+            startDestination = startDestination,
+            enterTransition = {
+                slideInHorizontally(initialOffsetX = { 350 }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300))
+            },
+            exitTransition = {
+                slideOutHorizontally(targetOffsetX = { -350 }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+            },
+            popEnterTransition = {
+                slideInHorizontally(initialOffsetX = { -350 }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300))
+            },
+            popExitTransition = {
+                slideOutHorizontally(targetOffsetX = { 350 }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+            }
         ) {
             composable(Screen.Login.route) {
                 LoginScreen(

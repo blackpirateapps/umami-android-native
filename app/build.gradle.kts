@@ -85,6 +85,9 @@ dependencies {
     // WorkManager for background periodic widget updates
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 
+    // MPAndroidChart Library
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
     // Room Database for Offline Caching
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")

@@ -1,11 +1,7 @@
 package com.umami.analytics.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Canvas
+import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,19 +19,19 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import com.github.mikephil.charting.charts.BarChart
+import com.github.mikephil.charting.components.XAxis
+import com.github.mikephil.charting.data.BarData
+import com.github.mikephil.charting.data.BarDataSet
+import com.github.mikephil.charting.data.BarEntry
+import com.github.mikephil.charting.formatter.ValueFormatter
 import com.umami.analytics.data.api.models.ChartPointDto
 
 @Composable
@@ -44,11 +40,10 @@ fun AnalyticsChart(
     sessions: List<ChartPointDto>,
     modifier: Modifier = Modifier
 ) {
-    val pvColor = MaterialTheme.colorScheme.primary
-    val sessColor = MaterialTheme.colorScheme.secondary
-    val gridColor = MaterialTheme.colorScheme.outlineVariant
-
-    var selectedIndex by remember { mutableStateOf<Int?>(null) }
+    val pvColor = MaterialTheme.colorScheme.primary.toArgb()
+    val sessColor = MaterialTheme.colorScheme.secondary.toArgb()
+    val labelTextColor = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
+    val gridLineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f).toArgb()
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -73,7 +68,7 @@ fun AnalyticsChart(
                     Box(
                         modifier = Modifier
                             .size(10.dp)
-                            .background(pvColor, CircleShape)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
@@ -85,7 +80,7 @@ fun AnalyticsChart(
                     Box(
                         modifier = Modifier
                             .size(10.dp)
-                            .background(sessColor, CircleShape)
+                            .background(MaterialTheme.colorScheme.secondary, CircleShape)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
@@ -96,60 +91,13 @@ fun AnalyticsChart(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Interactive Bar Popup / Tooltip Card
-            selectedIndex?.let { idx ->
-                val pvItem = pageviews.getOrNull(idx)
-                val sessItem = sessions.getOrNull(idx)
-                if (pvItem != null) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = pvItem.x,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Row {
-                                Text(
-                                    text = "Views: ${pvItem.y}",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = "Visitors: ${sessItem?.y ?: 0}",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.secondary
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+            Spacer(modifier = Modifier.height(16.dp))
 
             if (pageviews.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp),
+                        .height(200.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -159,122 +107,84 @@ fun AnalyticsChart(
                     )
                 }
             } else {
-                val maxPv = pageviews.maxOfOrNull { it.y } ?: 1L
-                val maxSess = sessions.maxOfOrNull { it.y } ?: 1L
-                val maxValue = maxOf(maxPv, maxSess, 5L)
-
-                Row(
+                AndroidView(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp)
-                ) {
-                    // Y-Axis Labels Column
-                    Column(
-                        modifier = Modifier
-                            .height(150.dp)
-                            .padding(end = 6.dp),
-                        verticalArrangement = Arrangement.SpaceBetween,
-                        horizontalAlignment = Alignment.End
-                    ) {
-                        Text(
-                            text = "$maxValue",
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "${maxValue / 2}",
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "0",
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                        .height(200.dp),
+                    factory = { ctx ->
+                        BarChart(ctx).apply {
+                            description.isEnabled = false
+                            setDrawGridBackground(false)
+                            setDrawBarShadow(false)
+                            setDrawValueAboveBar(true)
+                            setPinchZoom(false)
+                            setScaleEnabled(true)
+                            legend.isEnabled = false
+                            setTouchEnabled(true)
 
-                    // Canvas Chart and X-Axis Container
-                    Column(modifier = Modifier.weight(1f)) {
-                        Canvas(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(150.dp)
-                                .pointerInput(pageviews) {
-                                    detectTapGestures { offset ->
-                                        val width = size.width
-                                        val itemCount = pageviews.size
-                                        val stepX = width / maxOf(itemCount, 1)
-                                        val tappedIndex = (offset.x / stepX).toInt().coerceIn(0, itemCount - 1)
-                                        selectedIndex = tappedIndex
-                                    }
-                                }
-                        ) {
-                            val width = size.width
-                            val height = size.height
-
-                            // Grid lines
-                            val gridLines = 3
-                            for (i in 0..gridLines) {
-                                val y = height - (height / gridLines) * i
-                                drawLine(
-                                    color = gridColor,
-                                    start = Offset(0f, y),
-                                    end = Offset(width, y),
-                                    strokeWidth = 1.dp.toPx()
-                                )
+                            xAxis.apply {
+                                position = XAxis.XAxisPosition.BOTTOM
+                                textColor = labelTextColor
+                                gridColor = gridLineColor
+                                setDrawGridLines(false)
+                                granularity = 1f
                             }
 
-                            val itemCount = pageviews.size
-                            val stepX = width / maxOf(itemCount, 1)
-                            val barWidth = (stepX * 0.35f).coerceAtMost(20.dp.toPx())
+                            axisLeft.apply {
+                                textColor = labelTextColor
+                                gridColor = gridLineColor
+                                axisMinimum = 0f
+                            }
 
-                            pageviews.forEachIndexed { index, pv ->
-                                val xCenter = stepX * index + stepX / 2f
-                                val pvHeight = (pv.y.toFloat() / maxValue) * height
-                                val sess = sessions.getOrNull(index)
-                                val sessHeight = ((sess?.y ?: 0L).toFloat() / maxValue) * height
+                            axisRight.isEnabled = false
+                        }
+                    },
+                    update = { chart ->
+                        val pvEntries = ArrayList<BarEntry>()
+                        val sessEntries = ArrayList<BarEntry>()
 
-                                val isSelected = selectedIndex == index
+                        pageviews.forEachIndexed { index, pv ->
+                            pvEntries.add(BarEntry(index.toFloat(), pv.y.toFloat()))
+                            val sess = sessions.getOrNull(index)
+                            sessEntries.add(BarEntry(index.toFloat(), (sess?.y ?: 0L).toFloat()))
+                        }
 
-                                // Views Bar
-                                drawRoundRect(
-                                    color = if (isSelected) pvColor else pvColor.copy(alpha = 0.85f),
-                                    topLeft = Offset(xCenter - barWidth, height - pvHeight),
-                                    size = Size(barWidth, pvHeight),
-                                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
-                                )
+                        val pvDataSet = BarDataSet(pvEntries, "Views").apply {
+                            color = pvColor
+                            valueTextColor = labelTextColor
+                            valueTextSize = 9f
+                            setDrawValues(false)
+                        }
 
-                                // Visitors Bar
-                                drawRoundRect(
-                                    color = if (isSelected) sessColor else sessColor.copy(alpha = 0.85f),
-                                    topLeft = Offset(xCenter + 2.dp.toPx(), height - sessHeight),
-                                    size = Size(barWidth, sessHeight),
-                                    cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
-                                )
+                        val sessDataSet = BarDataSet(sessEntries, "Visitors").apply {
+                            color = sessColor
+                            valueTextColor = labelTextColor
+                            valueTextSize = 9f
+                            setDrawValues(false)
+                        }
+
+                        val groupSpace = 0.3f
+                        val barSpace = 0.05f
+                        val barWidth = 0.3f
+
+                        val barData = BarData(pvDataSet, sessDataSet).apply {
+                            this.barWidth = barWidth
+                        }
+
+                        chart.data = barData
+
+                        chart.xAxis.valueFormatter = object : ValueFormatter() {
+                            override fun getFormattedValue(value: Float): String {
+                                val idx = value.toInt()
+                                val point = pageviews.getOrNull(idx) ?: return ""
+                                return point.x.split(" ").lastOrNull()?.take(5) ?: point.x.take(5)
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        // X-Axis Labels Row (Sampled timestamps)
-                        val sampleStep = maxOf(1, pageviews.size / 5)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            pageviews.forEachIndexed { idx, item ->
-                                if (idx % sampleStep == 0 || idx == pageviews.size - 1) {
-                                    val labelStr = item.x.split(" ").lastOrNull() ?: item.x
-                                    Text(
-                                        text = labelStr.take(5),
-                                        fontSize = 9.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
+                        chart.groupBars(0f, groupSpace, barSpace)
+                        chart.invalidate()
                     }
-                }
+                )
             }
         }
     }

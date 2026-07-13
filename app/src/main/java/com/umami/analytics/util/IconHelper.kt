@@ -1,5 +1,7 @@
 package com.umami.analytics.util
 
+import com.umami.analytics.R
+
 object IconHelper {
 
     fun getFaviconUrl(domainOrUrl: String?): String? {
@@ -15,6 +17,18 @@ object IconHelper {
         }
 
         return "https://www.google.com/s2/favicons?domain=$cleanDomain&sz=64"
+    }
+
+    fun getOsDrawableRes(os: String?): Int {
+        if (os.isNullOrBlank()) return R.drawable.ic_os_linux
+        val name = os.lowercase()
+        return when {
+            name.contains("windows") -> R.drawable.ic_os_windows
+            name.contains("mac") || name.contains("ios") || name.contains("apple") -> R.drawable.ic_os_apple
+            name.contains("linux") || name.contains("ubuntu") || name.contains("debian") || name.contains("fedora") || name.contains("arch") -> R.drawable.ic_os_linux
+            name.contains("android") -> R.drawable.ic_os_android
+            else -> R.drawable.ic_os_linux
+        }
     }
 
     fun getBrowserEmoji(browser: String?): String {
@@ -34,24 +48,6 @@ object IconHelper {
             name.contains("duckduckgo") -> "🦆"
             name.contains("android") -> "🤖"
             else -> "🌐"
-        }
-    }
-
-    fun getOsEmoji(os: String?): String {
-        if (os.isNullOrBlank()) return "💻"
-        val name = os.lowercase()
-        return when {
-            name.contains("linux") -> "🐧"
-            name.contains("ubuntu") -> "🟠"
-            name.contains("debian") -> "🌀"
-            name.contains("fedora") -> "🔵"
-            name.contains("arch") -> "🌐"
-            name.contains("windows") -> "🪟"
-            name.contains("mac") || name.contains("ios") -> "🍎"
-            name.contains("android") -> "🤖"
-            name.contains("chrome") -> "💻"
-            name.contains("bsd") -> "😈"
-            else -> "💻"
         }
     }
 }
