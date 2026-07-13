@@ -1,37 +1,86 @@
 package com.umami.analytics.ui.components
 
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.unit.sp
 import com.umami.analytics.data.api.models.MetricItemDto
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import com.umami.analytics.util.DateUtils
+
+private data class CountryRegion(
+    val code: String,
+    val name: String,
+    val centerPoint: Offset, // Normalized [0..1]
+    val bounds: Pair<Offset, Offset> // Normalized bounds (topLeft, bottomRight)
+)
+
+private val WORLD_REGIONS = listOf(
+    CountryRegion("US", "United States", Offset(0.22f, 0.35f), Pair(Offset(0.12f, 0.25f), Offset(0.30f, 0.45f))),
+    CountryRegion("CA", "Canada", Offset(0.20f, 0.20f), Pair(Offset(0.10f, 0.10f), Offset(0.32f, 0.25f))),
+    CountryRegion("MX", "Mexico", Offset(0.20f, 0.48f), Pair(Offset(0.15f, 0.42f), Offset(0.25f, 0.54f))),
+    CountryRegion("BR", "Brazil", Offset(0.35f, 0.65f), Pair(Offset(0.28f, 0.52f), Offset(0.40f, 0.78f))),
+    CountryRegion("GB", "United Kingdom", Offset(0.47f, 0.24f), Pair(Offset(0.45f, 0.20f), Offset(0.49f, 0.28f))),
+    CountryRegion("FR", "France", Offset(0.49f, 0.29f), Pair(Offset(0.47f, 0.26f), Offset(0.51f, 0.32f))),
+    CountryRegion("DE", "Germany", Offset(0.52f, 0.26f), Pair(Offset(0.50f, 0.23f), Offset(0.54f, 0.29f))),
+    CountryRegion("ES", "Spain", Offset(0.47f, 0.34f), Pair(Offset(0.44f, 0.31f), Offset(0.49f, 0.37f))),
+    CountryRegion("IT", "Italy", Offset(0.53f, 0.33f), Pair(Offset(0.51f, 0.30f), Offset(0.55f, 0.36f))),
+    CountryRegion("RU", "Russia", Offset(0.72f, 0.22f), Pair(Offset(0.58f, 0.10f), Offset(0.92f, 0.36f))),
+    CountryRegion("IN", "India", Offset(0.71f, 0.45f), Pair(Offset(0.66f, 0.38f), Offset(0.75f, 0.54f))),
+    CountryRegion("CN", "China", Offset(0.78f, 0.38f), Pair(Offset(0.71f, 0.30f), Offset(0.85f, 0.46f))),
+    CountryRegion("JP", "Japan", Offset(0.88f, 0.36f), Pair(Offset(0.85f, 0.32f), Offset(0.91f, 0.40f))),
+    CountryRegion("SG", "Singapore", Offset(0.77f, 0.57f), Pair(Offset(0.76f, 0.55f), Offset(0.79f, 0.59f))),
+    CountryRegion("AU", "Australia", Offset(0.85f, 0.72f), Pair(Offset(0.78f, 0.62f), Offset(0.92f, 0.82f))),
+    CountryRegion("ZA", "South Africa", Offset(0.54f, 0.76f), Pair(Offset(0.50f, 0.70f), Offset(0.58f, 0.82f)))
+)
 
 @Composable
 fun WorldMapComposable(
     countries: List<MetricItemDto>,
     modifier: Modifier = Modifier
 ) {
-    val countryDataJson = buildJsonObject {
-        countries.forEach { item ->
-            val code = item.x ?: ""
-            put(code.uppercase(), item.y)
-        }
-    }.toString()
+    val countryMap = remember(countries) {
+        countries.associate { (it.x ?: "").uppercase() to it.y }
+    }
+
+    var selectedRegion by remember { mutableStateOf<CountryRegion?>(null) }
+    var selectedVisitorCount by remember { mutableStateOf(0L) }
+
+    val outlineColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+    val activeFillColor = MaterialTheme.colorScheme.secondary
+    val inactiveDotColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -41,138 +90,144 @@ fun WorldMapComposable(
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Visitor Locations",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Visitor Map",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
 
-            Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "${countries.size} Countries Active",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
-            AndroidView(
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Interactive Tooltip Card matching Screenshot 1 (e.g. "Russia: 0 visitors")
+            selectedRegion?.let { reg ->
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${DateUtils.getFlagEmoji(reg.code)} ${reg.name}: ",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "$selectedVisitorCount visitors",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            // High-Performance Vector Canvas World Map
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(260.dp),
-                factory = { ctx ->
-                    WebView(ctx).apply {
-                        webViewClient = WebViewClient()
-                        settings.javaScriptEnabled = true
-                        settings.useWideViewPort = true
-                        settings.loadWithOverviewMode = true
-                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    .height(220.dp)
+                    .background(Color(0xFF0F172A), RoundedCornerShape(12.dp))
+                    .padding(8.dp)
+            ) {
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(countryMap) {
+                            detectTapGestures { offset ->
+                                val w = size.width
+                                val h = size.height
+                                val normX = offset.x / w
+                                val normY = offset.y / h
+
+                                val matched = WORLD_REGIONS.find { reg ->
+                                    val (tl, br) = reg.bounds
+                                    normX in tl.x..br.x && normY in tl.y..br.y
+                                }
+
+                                if (matched != null) {
+                                    selectedRegion = matched
+                                    selectedVisitorCount = countryMap[matched.code] ?: 0L
+                                } else {
+                                    // Default fallback to Russia or nearest region if tapped elsewhere
+                                    val nearest = WORLD_REGIONS.minByOrNull { reg ->
+                                        val dx = normX - reg.centerPoint.x
+                                        val dy = normY - reg.centerPoint.y
+                                        dx * dx + dy * dy
+                                    }
+                                    selectedRegion = nearest
+                                    selectedVisitorCount = countryMap[nearest?.code] ?: 0L
+                                }
+                            }
+                        }
+                ) {
+                    val w = size.width
+                    val h = size.height
+
+                    // Grid outlines for dark map design
+                    val stroke = Stroke(width = 1.dp.toPx())
+
+                    // Draw continents / country bounding regions
+                    WORLD_REGIONS.forEach { reg ->
+                        val (tl, br) = reg.bounds
+                        val left = tl.x * w
+                        val top = tl.y * h
+                        val width = (br.x - tl.x) * w
+                        val height = (br.y - tl.y) * h
+
+                        val count = countryMap[reg.code] ?: 0L
+                        val isActive = count > 0 || selectedRegion?.code == reg.code
+
+                        // Draw region boundary rect with rounded corners
+                        drawRoundRect(
+                            color = if (isActive) activeFillColor.copy(alpha = 0.25f) else Color(0xFF1E293B).copy(alpha = 0.5f),
+                            topLeft = Offset(left, top),
+                            size = Size(width, height),
+                            cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
+                        )
+
+                        drawRoundRect(
+                            color = if (isActive) activeFillColor else outlineColor,
+                            topLeft = Offset(left, top),
+                            size = Size(width, height),
+                            cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx()),
+                            style = stroke
+                        )
+
+                        // Center indicator dot
+                        val cx = reg.centerPoint.x * w
+                        val cy = reg.centerPoint.y * h
+                        drawCircle(
+                            color = if (isActive) activeFillColor else inactiveDotColor,
+                            radius = if (isActive) 6.dp.toPx() else 3.dp.toPx(),
+                            center = Offset(cx, cy)
+                        )
                     }
-                },
-                update = { webView ->
-                    val htmlContent = generateWorldMapHtml(countryDataJson)
-                    webView.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
                 }
-            )
+            }
         }
     }
-}
-
-private fun generateWorldMapHtml(countryJson: String): String {
-    return """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                body {
-                    margin: 0;
-                    padding: 0;
-                    background-color: #0F172A;
-                    color: #FFFFFF;
-                    font-family: system-ui, -apple-system, sans-serif;
-                    overflow: hidden;
-                }
-                #map-container {
-                    width: 100vw;
-                    height: 100vh;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    position: relative;
-                }
-                svg {
-                    width: 100%;
-                    height: 100%;
-                }
-                path {
-                    fill: #0F2A4A;
-                    stroke: #0284C7;
-                    stroke-width: 0.8;
-                    transition: fill 0.2s, stroke 0.2s;
-                }
-                path.active {
-                    fill: #38BDF8;
-                }
-                path:hover, path:active {
-                    fill: #6366F1;
-                    stroke: #E0E7FF;
-                }
-                .tooltip {
-                    position: absolute;
-                    background-color: rgba(15, 23, 42, 0.95);
-                    border: 1px solid #38BDF8;
-                    color: #FFFFFF;
-                    padding: 6px 12px;
-                    border-radius: 6px;
-                    font-size: 12px;
-                    font-weight: bold;
-                    pointer-events: none;
-                    display: none;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-                    z-index: 10;
-                }
-            </style>
-        </head>
-        <body>
-            <div id="map-container">
-                <div id="tooltip" class="tooltip"></div>
-                <svg viewBox="0 0 1000 500">
-                    <!-- Simplistic High Quality Vector World Paths -->
-                    <g id="countries">
-                        <path id="RU" d="M 600,100 L 900,100 L 920,200 L 650,220 Z" data-name="Russia" />
-                        <path id="IN" d="M 680,220 L 730,220 L 710,290 L 680,260 Z" data-name="India" />
-                        <path id="US" d="M 150,150 L 300,150 L 300,240 L 150,240 Z" data-name="United States" />
-                        <path id="CA" d="M 150,60 L 320,60 L 300,145 L 140,145 Z" data-name="Canada" />
-                        <path id="CN" d="M 720,180 L 840,180 L 820,260 L 710,240 Z" data-name="China" />
-                        <path id="BR" d="M 280,270 L 380,270 L 340,390 L 270,330 Z" data-name="Brazil" />
-                        <path id="AU" d="M 800,320 L 920,320 L 900,420 L 790,400 Z" data-name="Australia" />
-                        <path id="SG" d="M 735,295 L 745,295 L 745,305 L 735,305 Z" data-name="Singapore" />
-                        <path id="JP" d="M 850,160 L 880,160 L 870,220 L 840,210 Z" data-name="Japan" />
-                        <path id="DE" d="M 500,140 L 530,140 L 530,175 L 500,175 Z" data-name="Germany" />
-                        <path id="FR" d="M 465,150 L 495,150 L 490,190 L 460,185 Z" data-name="France" />
-                        <path id="ES" d="M 440,180 L 470,180 L 465,215 L 435,210 Z" data-name="Spain" />
-                        <path id="GB" d="M 460,110 L 485,110 L 480,140 L 455,135 Z" data-name="United Kingdom" />
-                    </g>
-                </svg>
-            </div>
-            <script>
-                const countryData = $countryJson;
-                const tooltip = document.getElementById('tooltip');
-                const paths = document.querySelectorAll('path');
-
-                paths.forEach(p => {
-                    const id = p.getAttribute('id');
-                    const name = p.getAttribute('data-name') || id;
-                    const count = countryData[id] || 0;
-
-                    if (count > 0) {
-                        p.classList.add('active');
-                    }
-
-                    p.addEventListener('click', (e) => {
-                        tooltip.style.display = 'block';
-                        tooltip.innerText = name + ': ' + count + ' visitors';
-                        tooltip.style.left = (e.clientX - 40) + 'px';
-                        tooltip.style.top = (e.clientY - 40) + 'px';
-                    });
-                });
-            </script>
-        </body>
-        </html>
-    """.trimIndent()
 }
