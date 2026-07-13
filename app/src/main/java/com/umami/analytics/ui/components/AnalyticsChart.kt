@@ -128,7 +128,6 @@ fun AnalyticsChart(
                                 gridColor = gridLineColor
                                 setDrawGridLines(false)
                                 granularity = 1f
-                                labelCount = minOf(6, pageviews.size)
                             }
 
                             axisLeft.apply {
@@ -141,49 +140,57 @@ fun AnalyticsChart(
                         }
                     },
                     update = { chart ->
-                        val pvEntries = ArrayList<BarEntry>()
-                        val sessEntries = ArrayList<BarEntry>()
+                        try {
+                            val pvEntries = ArrayList<BarEntry>()
+                            val sessEntries = ArrayList<BarEntry>()
 
-                        pageviews.forEachIndexed { index, pv ->
-                            pvEntries.add(BarEntry(index.toFloat(), pv.y.toFloat()))
-                            val sess = sessions.getOrNull(index)
-                            sessEntries.add(BarEntry(index.toFloat(), (sess?.y ?: 0L).toFloat()))
-                        }
-
-                        val pvDataSet = BarDataSet(pvEntries, "Views").apply {
-                            color = pvColor
-                            valueTextColor = labelTextColor
-                            valueTextSize = 9f
-                            setDrawValues(false)
-                        }
-
-                        val sessDataSet = BarDataSet(sessEntries, "Visitors").apply {
-                            color = sessColor
-                            valueTextColor = labelTextColor
-                            valueTextSize = 9f
-                            setDrawValues(false)
-                        }
-
-                        val groupSpace = 0.3f
-                        val barSpace = 0.05f
-                        val barWidth = 0.3f
-
-                        val barData = BarData(pvDataSet, sessDataSet).apply {
-                            this.barWidth = barWidth
-                        }
-
-                        chart.data = barData
-
-                        chart.xAxis.valueFormatter = object : ValueFormatter() {
-                            override fun getFormattedValue(value: Float): String {
-                                val idx = value.toInt()
-                                val point = pageviews.getOrNull(idx) ?: return ""
-                                return formatXAxisLabel(point.x)
+                            pageviews.forEachIndexed { index, pv ->
+                                pvEntries.add(BarEntry(index.toFloat(), pv.y.toFloat()))
+                                val sess = sessions.getOrNull(index)
+                                sessEntries.add(BarEntry(index.toFloat(), (sess?.y ?: 0L).toFloat()))
                             }
-                        }
 
-                        chart.groupBars(0f, groupSpace, barSpace)
-                        chart.invalidate()
+                            if (pvEntries.isNotEmpty() && sessEntries.isNotEmpty()) {
+                                val pvDataSet = BarDataSet(pvEntries, "Views").apply {
+                                    color = pvColor
+                                    valueTextColor = labelTextColor
+                                    valueTextSize = 9f
+                                    setDrawValues(false)
+                                }
+
+                                val sessDataSet = BarDataSet(sessEntries, "Visitors").apply {
+                                    color = sessColor
+                                    valueTextColor = labelTextColor
+                                    valueTextSize = 9f
+                                    setDrawValues(false)
+                                }
+
+                                val groupSpace = 0.3f
+                                val barSpace = 0.05f
+                                val barWidth = 0.3f
+
+                                val barData = BarData(pvDataSet, sessDataSet).apply {
+                                    this.barWidth = barWidth
+                                }
+
+                                chart.data = barData
+
+                                chart.xAxis.valueFormatter = object : ValueFormatter() {
+                                    override fun getFormattedValue(value: Float): String {
+                                        val idx = value.toInt()
+                                        if (idx < 0 || idx >= pageviews.size) return ""
+                                        val point = pageviews.getOrNull(idx) ?: return ""
+                                        return formatXAxisLabel(point.x)
+                                    }
+                                }
+
+                                chart.groupBars(0f, groupSpace, barSpace)
+                                chart.notifyDataSetChanged()
+                                chart.invalidate()
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
                     }
                 )
             }

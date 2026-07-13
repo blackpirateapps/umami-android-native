@@ -12,9 +12,7 @@ import com.umami.analytics.data.api.models.RealtimeActivityItem
 import com.umami.analytics.data.api.models.SessionItemDto
 import com.umami.analytics.data.api.models.TimeRange
 import com.umami.analytics.data.api.models.WebsiteDto
-import com.umami.analytics.data.api.models.WebsiteStatsDto
 import com.umami.analytics.data.preferences.SessionManager
-import com.umami.analytics.util.DateUtils
 import com.umami.analytics.util.NetworkObserver
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,7 +35,7 @@ data class RealtimeUiState(
     val countriesCount: Long = 0,
     val pageviewsChart: List<ChartPointDto> = emptyList(),
     val sessionsChart: List<ChartPointDto> = emptyList(),
-    val activityFilter: ActivityType? = null, // null for All
+    val activityFilter: ActivityType? = null,
     val searchQuery: String = "",
     val activities: List<RealtimeActivityItem> = emptyList(),
     val topPages: List<MetricItemDto> = emptyList(),
@@ -67,30 +65,38 @@ class RealtimeViewModel(
 
     private fun observeNetworkState() {
         viewModelScope.launch {
-            networkObserver.isOnline.collect { isOnline ->
-                _uiState.value = _uiState.value.copy(isOffline = !isOnline)
+            try {
+                networkObserver.isOnline.collect { isOnline ->
+                    _uiState.value = _uiState.value.copy(isOffline = !isOnline)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
 
     fun loadWebsites() {
         viewModelScope.launch {
-            repository.getWebsites().collect { result ->
-                result.onSuccess { sites ->
-                    val savedId = sessionManager.getSelectedWebsiteId()
-                    val targetSite = sites.find { it.id == savedId } ?: sites.firstOrNull()
-                    val targetId = targetSite?.id
+            try {
+                repository.getWebsites().collect { result ->
+                    result.onSuccess { sites ->
+                        val savedId = sessionManager.getSelectedWebsiteId()
+                        val targetSite = sites.find { it.id == savedId } ?: sites.firstOrNull()
+                        val targetId = targetSite?.id
 
-                    _uiState.value = _uiState.value.copy(
-                        websites = sites,
-                        selectedWebsiteId = targetId,
-                        selectedWebsiteName = targetSite?.name ?: "Homepage"
-                    )
+                        _uiState.value = _uiState.value.copy(
+                            websites = sites,
+                            selectedWebsiteId = targetId,
+                            selectedWebsiteName = targetSite?.name ?: "Homepage"
+                        )
 
-                    if (targetId != null) {
-                        fetchRealtimeData(targetId)
+                        if (targetId != null) {
+                            fetchRealtimeData(targetId)
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -106,95 +112,105 @@ class RealtimeViewModel(
     private fun startRealtimePolling() {
         viewModelScope.launch {
             while (isPollingActive) {
-                _uiState.value.selectedWebsiteId?.let { id ->
-                    fetchRealtimeData(id)
+                try {
+                    _uiState.value.selectedWebsiteId?.let { id ->
+                        fetchRealtimeData(id)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
-                delay(6000L) // Poll every 6s
+                delay(6000L)
             }
         }
     }
 
     private suspend fun fetchRealtimeData(websiteId: String) {
-        val serverUrl = sessionManager.getServerUrl() ?: return
-        val token = sessionManager.getToken() ?: return
-        val isOnline = networkObserver.isCurrentlyOnline()
+        try {
+            val serverUrl = sessionManager.getServerUrl() ?: return
+            val token = sessionManager.getToken() ?: return
+            val isOnline = networkObserver.isCurrentlyOnline()
 
-        val endAt = System.currentTimeMillis()
-        val startAt = endAt - 30 * 60 * 1000L // 30 minutes window
+            val endAt = System.currentTimeMillis()
+            val startAt = endAt - 30 * 60 * 1000L
 
-        if (isOnline) {
-            try {
-                val activeCount = apiService.getActiveUsers(serverUrl, token, websiteId)
-                val stats = apiService.getStats(serverUrl, token, websiteId, startAt, endAt)
-                val chartData = apiService.getPageviews(serverUrl, token, websiteId, startAt, endAt, "minute")
-                val sessions = apiService.getSessions(serverUrl, token, websiteId, startAt, endAt)
-                val pages = apiService.getMetrics(serverUrl, token, websiteId, startAt, endAt, "url")
-                val refs = apiService.getMetrics(serverUrl, token, websiteId, startAt, endAt, "referrer")
-                val countries = apiService.getMetrics(serverUrl, token, websiteId, startAt, endAt, "country")
+            if (isOnline) {
+                try {
+                    val activeCount = apiService.getActiveUsers(serverUrl, token, websiteId)
+                    val stats = apiService.getStats(serverUrl, token, websiteId, startAt, endAt)
+                    val chartData = apiService.getPageviews(serverUrl, token, websiteId, startAt, endAt, "minute")
+                    val sessions = apiService.getSessions(serverUrl, token, websiteId, startAt, endAt)
+                    val pages = apiService.getMetrics(serverUrl, token, websiteId, startAt, endAt, "url")
+                    val refs = apiService.getMetrics(serverUrl, token, websiteId, startAt, endAt, "referrer")
+                    val countries = apiService.getMetrics(serverUrl, token, websiteId, startAt, endAt, "country")
 
-                val activityItems = generateActivityItems(sessions)
+                    val activityItems = generateActivityItems(sessions)
 
-                _uiState.value = _uiState.value.copy(
-                    activeOnlineCount = maxOf(1, activeCount),
-                    viewsCount = stats.pageviews.value,
-                    visitorsCount = stats.visitors.value,
-                    eventsCount = stats.events.value,
-                    countriesCount = countries.size.toLong(),
-                    pageviewsChart = chartData.pageviews,
-                    sessionsChart = chartData.sessions,
-                    activities = activityItems,
-                    topPages = pages,
-                    referrers = refs,
-                    countries = countries,
-                    isLoading = false
-                )
-                return
-            } catch (e: Exception) {
-                // Fallback to repository cache
+                    _uiState.value = _uiState.value.copy(
+                        activeOnlineCount = maxOf(1, activeCount),
+                        viewsCount = stats.pageviews.value,
+                        visitorsCount = stats.visitors.value,
+                        eventsCount = stats.events.value,
+                        countriesCount = countries.size.toLong(),
+                        pageviewsChart = chartData.pageviews,
+                        sessionsChart = chartData.sessions,
+                        activities = activityItems,
+                        topPages = pages,
+                        referrers = refs,
+                        countries = countries,
+                        isLoading = false
+                    )
+                    return
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
-        }
 
-        // Offline / Cache fallback
-        repository.getStats(websiteId, TimeRange.LAST_24_HOURS, 0, AnalyticsFilter()).firstOrNull()?.let { st ->
-            _uiState.value = _uiState.value.copy(
-                viewsCount = st.pageviews.value,
-                visitorsCount = st.visitors.value
-            )
+            // Offline / Cache fallback
+            repository.getStats(websiteId, TimeRange.LAST_24_HOURS, 0, AnalyticsFilter()).firstOrNull()?.let { st ->
+                _uiState.value = _uiState.value.copy(
+                    viewsCount = st.pageviews.value,
+                    visitorsCount = st.visitors.value
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
     private fun generateActivityItems(sessions: List<SessionItemDto>): List<RealtimeActivityItem> {
         val list = mutableListOf<RealtimeActivityItem>()
-        val timeFormat = SimpleDateFormat("h:mm:ss a", Locale.US)
+        try {
+            val timeFormat = SimpleDateFormat("h:mm:ss a", Locale.US)
+            val nowStr = timeFormat.format(Date())
 
-        sessions.take(15).forEach { session ->
-            val timestampStr = timeFormat.format(Date())
-            val countryName = session.country ?: "India"
-            val browserName = session.browser ?: "Firefox"
-            val osName = session.os ?: "Linux"
-            val deviceName = session.device ?: "Laptop"
+            sessions.take(15).forEach { session ->
+                val countryName = session.country ?: "India"
+                val browserName = session.browser ?: "Firefox"
+                val osName = session.os ?: "Linux"
+                val deviceName = session.device ?: "Laptop"
 
-            // 1. Visitor Activity Item
-            list.add(
-                RealtimeActivityItem(
-                    id = "${session.id}_visitor",
-                    avatarSeed = session.id,
-                    timeFormatted = timestampStr,
-                    type = ActivityType.VISITOR,
-                    detailText = "Visitor from $countryName using $browserName on $osName $deviceName"
+                list.add(
+                    RealtimeActivityItem(
+                        id = "${session.id}_visitor",
+                        avatarSeed = session.id,
+                        timeFormatted = nowStr,
+                        type = ActivityType.VISITOR,
+                        detailText = "Visitor from $countryName using $browserName on $osName $deviceName"
+                    )
                 )
-            )
 
-            // 2. View Activity Item
-            list.add(
-                RealtimeActivityItem(
-                    id = "${session.id}_view",
-                    avatarSeed = session.id,
-                    timeFormatted = timestampStr,
-                    type = ActivityType.VIEW,
-                    detailText = "👁 /"
+                list.add(
+                    RealtimeActivityItem(
+                        id = "${session.id}_view",
+                        avatarSeed = session.id,
+                        timeFormatted = nowStr,
+                        type = ActivityType.VIEW,
+                        detailText = "👁 /"
+                    )
                 )
-            )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
         return list
     }
