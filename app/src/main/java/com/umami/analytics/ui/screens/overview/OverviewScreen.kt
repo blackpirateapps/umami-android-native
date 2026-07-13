@@ -50,7 +50,6 @@ import com.umami.analytics.ui.components.FilterDialog
 import com.umami.analytics.ui.components.MetricCard
 import com.umami.analytics.ui.components.MetricType
 import com.umami.analytics.ui.components.OfflineNoticeBar
-import com.umami.analytics.ui.components.WorldMapComposable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -210,11 +209,6 @@ fun OverviewScreen(
                 pageviews = uiState.pageviews,
                 sessions = uiState.sessions
             )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // World Map Location Graph (Matching Screenshot 1)
-            WorldMapComposable(countries = uiState.countries)
 
             Spacer(modifier = Modifier.height(20.dp))
 
