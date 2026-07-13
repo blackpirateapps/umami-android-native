@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -51,6 +50,7 @@ import com.umami.analytics.ui.components.FilterDialog
 import com.umami.analytics.ui.components.MetricCard
 import com.umami.analytics.ui.components.MetricType
 import com.umami.analytics.ui.components.OfflineNoticeBar
+import com.umami.analytics.ui.components.WorldMapComposable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -210,6 +210,11 @@ fun OverviewScreen(
                 pageviews = uiState.pageviews,
                 sessions = uiState.sessions
             )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // World Map Location Graph (Matching Screenshot 1)
+            WorldMapComposable(countries = uiState.countries)
 
             Spacer(modifier = Modifier.height(20.dp))
 

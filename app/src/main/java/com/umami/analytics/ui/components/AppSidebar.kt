@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Web
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -51,6 +52,7 @@ fun AppSidebar(
     onWebsiteSelected: (WebsiteDto) -> Unit,
     onNavigateToOverview: () -> Unit,
     onNavigateToSessions: () -> Unit,
+    onNavigateToWebsites: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -180,6 +182,21 @@ fun AppSidebar(
                 selected = currentRoute == "sessions",
                 onClick = onNavigateToSessions,
                 icon = { Icon(Icons.Default.Group, contentDescription = "Sessions") },
+                colors = NavigationDrawerItemDefaults.colors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                    selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            NavigationDrawerItem(
+                label = { Text("Websites", fontWeight = FontWeight.SemiBold) },
+                selected = currentRoute == "websites" || currentRoute.startsWith("website_detail"),
+                onClick = onNavigateToWebsites,
+                icon = { Icon(Icons.Default.Web, contentDescription = "Websites") },
                 colors = NavigationDrawerItemDefaults.colors(
                     selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                     selectedIconColor = MaterialTheme.colorScheme.primary,

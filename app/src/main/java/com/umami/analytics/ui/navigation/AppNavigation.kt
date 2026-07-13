@@ -12,7 +12,9 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -20,6 +22,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.umami.analytics.data.api.UmamiApiService
 import com.umami.analytics.data.api.UmamiRepository
+import com.umami.analytics.data.api.models.WebsiteDto
 import com.umami.analytics.data.db.UmamiDatabase
 import com.umami.analytics.data.preferences.SessionManager
 import com.umami.analytics.ui.components.AppSidebar
@@ -30,6 +33,8 @@ import com.umami.analytics.ui.screens.overview.OverviewViewModel
 import com.umami.analytics.ui.screens.sessions.SessionsScreen
 import com.umami.analytics.ui.screens.sessions.SessionsViewModel
 import com.umami.analytics.ui.screens.settings.SettingsScreen
+import com.umami.analytics.ui.screens.websites.WebsiteDetailScreen
+import com.umami.analytics.ui.screens.websites.WebsitesScreen
 import com.umami.analytics.util.NetworkObserver
 import kotlinx.coroutines.launch
 
@@ -37,6 +42,7 @@ sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Overview : Screen("overview")
     object Sessions : Screen("sessions")
+    object Websites : Screen("websites")
     object Settings : Screen("settings")
 }
 
@@ -72,6 +78,7 @@ fun AppNavigation(
     }
 
     val overviewUiState by overviewViewModel.uiState.collectAsState()
+    var selectedWebsiteDetail by remember { mutableStateOf<WebsiteDto?>(null) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -100,6 +107,16 @@ fun AppNavigation(
                     scope.launch { drawerState.close() }
                     if (currentRoute != Screen.Sessions.route) {
                         navController.navigate(Screen.Sessions.route) {
+                            popUpTo(Screen.Overview.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                },
+                onNavigateToWebsites = {
+                    scope.launch { drawerState.close() }
+                    if (currentRoute != Screen.Websites.route) {
+                        navController.navigate(Screen.Websites.route) {
                             popUpTo(Screen.Overview.route) { saveState = true }
                             launchSingleTop = true
                             restoreState = true
@@ -180,6 +197,27 @@ fun AppNavigation(
                     viewModel = sessionsViewModel,
                     onOpenDrawer = { scope.launch { drawerState.open() } }
                 )
+            }
+
+            composable(Screen.Websites.route) {
+                WebsitesScreen(
+                    websites = overviewUiState.websites,
+                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                    onSelectWebsiteDetail = { site ->
+                        selectedWebsiteDetail = site
+                        navController.navigate("website_detail")
+                    }
+                )
+            }
+
+            composable("website_detail") {
+                selectedWebsiteDetail?.let { site ->
+                    WebsiteDetailScreen(
+                        website = site,
+                        serverUrl = sessionManager.getServerUrl() ?: "https://analytics.umami.is",
+                        onBack = { navController.popBackStack() }
+                    )
+                }
             }
 
             composable(Screen.Settings.route) {
