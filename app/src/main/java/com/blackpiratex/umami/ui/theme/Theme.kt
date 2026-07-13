@@ -46,13 +46,13 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun UmamiTheme(
-    themeMode: String = "system",
+    themeMode: String = "SYSTEM",
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val darkTheme = when (themeMode) {
-        "dark" -> true
-        "light" -> false
+    val darkTheme = when (themeMode.uppercase()) {
+        "DARK" -> true
+        "LIGHT" -> false
         else -> isSystemInDarkTheme()
     }
 

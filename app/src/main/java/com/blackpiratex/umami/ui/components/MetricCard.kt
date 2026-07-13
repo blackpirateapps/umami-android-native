@@ -1,7 +1,6 @@
 package com.blackpiratex.umami.ui.components
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -85,8 +83,13 @@ fun MetricCard(
                 val maxCount = items.maxOfOrNull { it.y } ?: 1L
 
                 items.take(10).forEach { item ->
-                    val label = item.x ?: "Unknown"
-                    val progress = (item.y.toFloat() / maxCount).coerceIn(0f, 1f)
+                    val rawLabel = item.x?.trim()
+                    val label = when {
+                        rawLabel.isNullOrBlank() -> "/"
+                        type == MetricType.PAGE && !rawLabel.startsWith("/") && !rawLabel.startsWith("http") -> "/$rawLabel"
+                        else -> rawLabel
+                    }
+                    val progress = (item.y.toFloat() / maxCount.toFloat()).coerceIn(0f, 1f)
 
                     Column(
                         modifier = Modifier
