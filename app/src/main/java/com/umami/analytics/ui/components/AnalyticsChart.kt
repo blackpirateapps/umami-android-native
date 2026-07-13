@@ -128,6 +128,7 @@ fun AnalyticsChart(
                                 gridColor = gridLineColor
                                 setDrawGridLines(false)
                                 granularity = 1f
+                                labelCount = minOf(6, pageviews.size)
                             }
 
                             axisLeft.apply {
@@ -177,7 +178,7 @@ fun AnalyticsChart(
                             override fun getFormattedValue(value: Float): String {
                                 val idx = value.toInt()
                                 val point = pageviews.getOrNull(idx) ?: return ""
-                                return point.x.split(" ").lastOrNull()?.take(5) ?: point.x.take(5)
+                                return formatXAxisLabel(point.x)
                             }
                         }
 
@@ -187,5 +188,31 @@ fun AnalyticsChart(
                 )
             }
         }
+    }
+}
+
+private fun formatXAxisLabel(raw: String): String {
+    if (raw.isBlank()) return ""
+    return try {
+        when {
+            raw.contains(" ") -> {
+                val parts = raw.split(" ")
+                val timePart = parts.getOrNull(1) ?: ""
+                if (timePart.length >= 5) timePart.substring(0, 5) else timePart
+            }
+            raw.contains("T") -> {
+                val timePart = raw.split("T").getOrNull(1) ?: ""
+                if (timePart.length >= 5) timePart.substring(0, 5) else timePart
+            }
+            raw.length >= 10 && raw.count { it == '-' } == 2 -> {
+                val parts = raw.split("-")
+                val month = parts.getOrNull(1) ?: ""
+                val day = parts.getOrNull(2) ?: ""
+                "$month/$day"
+            }
+            else -> raw
+        }
+    } catch (e: Exception) {
+        raw
     }
 }

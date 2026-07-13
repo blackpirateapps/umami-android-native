@@ -1,5 +1,6 @@
 package com.umami.analytics.ui.navigation
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -87,19 +88,33 @@ fun AppNavigation(
                 },
                 onNavigateToOverview = {
                     scope.launch { drawerState.close() }
-                    navController.navigate(Screen.Overview.route) {
-                        popUpTo(Screen.Overview.route) { inclusive = true }
+                    if (currentRoute != Screen.Overview.route) {
+                        navController.navigate(Screen.Overview.route) {
+                            popUpTo(Screen.Overview.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 },
                 onNavigateToSessions = {
                     scope.launch { drawerState.close() }
-                    navController.navigate(Screen.Sessions.route) {
-                        popUpTo(Screen.Overview.route)
+                    if (currentRoute != Screen.Sessions.route) {
+                        navController.navigate(Screen.Sessions.route) {
+                            popUpTo(Screen.Overview.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 },
                 onNavigateToSettings = {
                     scope.launch { drawerState.close() }
-                    navController.navigate(Screen.Settings.route)
+                    if (currentRoute != Screen.Settings.route) {
+                        navController.navigate(Screen.Settings.route) {
+                            popUpTo(Screen.Overview.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
                 },
                 onLogout = {
                     scope.launch { drawerState.close() }
@@ -116,16 +131,28 @@ fun AppNavigation(
             navController = navController,
             startDestination = startDestination,
             enterTransition = {
-                slideInHorizontally(initialOffsetX = { 350 }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300))
+                slideInHorizontally(
+                    initialOffsetX = { 300 },
+                    animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(280))
             },
             exitTransition = {
-                slideOutHorizontally(targetOffsetX = { -350 }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                slideOutHorizontally(
+                    targetOffsetX = { -300 },
+                    animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(280))
             },
             popEnterTransition = {
-                slideInHorizontally(initialOffsetX = { -350 }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300))
+                slideInHorizontally(
+                    initialOffsetX = { -300 },
+                    animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(280))
             },
             popExitTransition = {
-                slideOutHorizontally(targetOffsetX = { 350 }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                slideOutHorizontally(
+                    targetOffsetX = { 300 },
+                    animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(280))
             }
         ) {
             composable(Screen.Login.route) {
